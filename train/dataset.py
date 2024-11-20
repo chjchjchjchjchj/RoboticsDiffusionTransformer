@@ -142,6 +142,12 @@ class VLAConsumerDataset(Dataset):
         
         self.last_content = None
         self.last_meta = None
+
+        if use_precomp_lang_embed:
+            import pickle
+            lang_embed_path = "data/datasets/openx_embod/fractal20220817_data/instructions_emb_upper.pkl"
+            with open(lang_embed_path, "rb") as f:
+                self.lang_embed_dict = pickle.load(f)
     
     def get_dataset_name2id(self):
         return self.dataset_name2id
@@ -188,7 +194,10 @@ class VLAConsumerDataset(Dataset):
         raise RuntimeError("Failed to load sample.")
 
     def __len__(self) -> int:
-        return self.num_chunks * self.chunk_size
+        if self.use_hdf5:
+            return len(self.hdf5_dataset)
+        else:
+            return self.num_chunks * self.chunk_size
 
     def _safe_load(self, index):
         read_chunk_item_indices = []
@@ -348,10 +357,17 @@ class VLAConsumerDataset(Dataset):
                 data_dict["images"] = preprocessed_images
 
                 if self.use_precomp_lang_embed:
-                    if content["instruction"][-1] == ".":
-                        content["instruction"] = content["instruction"][:-1]
-                    data_dict["lang_embed"] = torch.load(content["instruction"]) \
-                        if random.random() > self.cond_mask_prob else self.empty_lang_embed
+                    if content["instruction"] in self.lang_embed_dict.keys():
+                        lang_embed = self.lang_embed_dict[content["instruction"]]
+                        lang_embed = lang_embed
+                    else:
+                        lang_embed = self.empty_lang_embed
+                        print(f"Instruction {content['instruction']} not found in the lang_embed_dict.")
+                    data_dict["lang_embed"] = lang_embed if random.random() > self.cond_mask_prob else self.empty_lang_embed
+                    # if content["instruction"][-1] == ".":
+                    #     content["instruction"] = content["instruction"][:-1]
+                    # data_dict["lang_embed"] = torch.load(content["instruction"]) \
+                    #     if random.random() > self.cond_mask_prob else self.empty_lang_embed
                 else:
                     instruction = content["instruction"] \
                         if random.random() > self.cond_mask_prob else ""

@@ -90,6 +90,12 @@ def train(args, logger):
         project_dir=logging_dir,
         project_config=accelerator_project_config,
     )
+    # accelerator = Accelerator(
+    #     gradient_accumulation_steps=args.gradient_accumulation_steps,
+    #     mixed_precision=args.mixed_precision,
+    #     log_with=args.report_to,
+    #     project_dir=logging_dir,
+    # )
 
     if args.report_to == "wandb":
         if not is_wandb_available():

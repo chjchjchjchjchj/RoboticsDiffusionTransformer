@@ -43,14 +43,32 @@ def log_sample_res(
                 attention_mask=lang_attn_mask
             )["last_hidden_state"].detach()
             
-        pred_actions = rdt.predict_action(
-            lang_tokens=text_embeds,
-            lang_attn_mask=lang_attn_mask,
-            img_tokens=image_embeds,
-            state_tokens=states,
-            action_mask=state_elem_mask.unsqueeze(1),
-            ctrl_freqs=ctrl_freqs
-        )
+        # pred_actions = rdt.predict_action(
+        #     lang_tokens=text_embeds,
+        #     lang_attn_mask=lang_attn_mask,
+        #     img_tokens=image_embeds,
+        #     state_tokens=states,
+        #     action_mask=state_elem_mask.unsqueeze(1),
+        #     ctrl_freqs=ctrl_freqs
+        # )
+        if isinstance(rdt, torch.nn.parallel.DistributedDataParallel):
+            pred_actions = rdt.module.predict_action(
+                lang_tokens=text_embeds,
+                lang_attn_mask=lang_attn_mask,
+                img_tokens=image_embeds,
+                state_tokens=states,
+                action_mask=state_elem_mask.unsqueeze(1),
+                ctrl_freqs=ctrl_freqs
+            )
+        else:
+            pred_actions = rdt.predict_action(
+                lang_tokens=text_embeds,
+                lang_attn_mask=lang_attn_mask,
+                img_tokens=image_embeds,
+                state_tokens=states,
+                action_mask=state_elem_mask.unsqueeze(1),
+                ctrl_freqs=ctrl_freqs
+            )
         
         num_steps = pred_actions.shape[1]
         expanded_state_elem_mask = state_elem_mask.unsqueeze(1).tile((1, num_steps, 1)).float()
